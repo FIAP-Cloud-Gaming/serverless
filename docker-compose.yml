@@ -1,0 +1,37 @@
+name: fcg-serverless
+
+services:
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    container_name: fcg-serverless-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - fcg-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  functions:
+    image: ${DOCKER_REGISTRY:-fcg}/functions:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: src/Functions/Dockerfile
+    container_name: fcg-functions
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - fcg-network
+
+networks:
+  fcg-network:
+    driver: bridge
+
+volumes:
+  rabbitmq-data:

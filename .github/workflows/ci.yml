@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '*.md'
+      - '.gitignore'
+      - 'docker-compose*.yml'
+  workflow_call:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  CONFIGURATION: Release
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkout code
+      uses: actions/checkout@v6
+
+    - name: setup .net
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: cache nuget packages
+      uses: actions/cache@v5
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+        restore-keys: |
+          nuget-${{ runner.os }}-
+
+    - name: restore
+      run: dotnet restore src/Functions/Functions.csproj
+
+    - name: build
+      run: dotnet build src/Functions/Functions.csproj --configuration ${{ env.CONFIGURATION }} --no-restore
